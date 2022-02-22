@@ -1,3 +1,21 @@
+rm(list=ls(all=TRUE))  ## efface les données
+source('~/thib/projects/tools/R_lib.r')
+setwd('~/thib/projects/IGT/data/')
+
+load('data_human/result_fit_human_EU.rdata')
+load('data_mice/result_fit_miceEU.rdata')
+m <- result_fit_mice %>%
+    mutate(spec = 'mice')
+h <- result_fit_human %>%
+    mutate(spec = 'human')
+d <- rbind(m,h)
+
+plot <- ggplot(data = d, aes(x = subj, y = zeta, color = spec)) +
+    geom_point()
+plot
+t.test(d[d$spec=='human',]$zeta,d[d$spec=='mice',]$zeta)
+
+h
 
 start = Sys.time()
 fit <- stan(modelFile,

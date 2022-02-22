@@ -359,22 +359,22 @@ section.has-dark-background, section.has-dark-background h1, section.has-dark-ba
 <h2>Table of Contents</h2>
 <div id="text-table-of-contents">
 <ul>
-<li><a href="#/slide-org80c1345">Models</a></li>
-<li><a href="#/slide-orgcf93830">Results</a></li>
-<li><a href="#/slide-org05e7b53">Parameters</a></li>
+<li><a href="#/slide-org0812c80">Models</a></li>
+<li><a href="#/slide-org819858b">Results</a></li>
+<li><a href="#/slide-orga813255">Parameters</a></li>
 </ul>
 </div>
 </div>
 </section>
 
 <section>
-<section id="slide-org80c1345">
-<h2 id="org80c1345">Models</h2>
-<div class="outline-text-2" id="text-org80c1345">
+<section id="slide-org0812c80">
+<h2 id="org0812c80">Models</h2>
+<div class="outline-text-2" id="text-org0812c80">
 </div>
 </section>
-<section id="slide-orgd272714">
-<h3 id="orgd272714">Ligneul's (2019) Value plus Sequential Exploration (VSE) model:</h3>
+<section id="slide-orgd5ff314">
+<h3 id="orgd5ff314">Ligneul's (2019) Value plus Sequential Exploration (VSE) model:</h3>
 <p>
 Utility:  \(v(\text{gain}, \text{loss}) = \text{gain}^\alpha - \text{loss}^\alpha\) (\(\alpha \in [0,1]\))
 </p>
@@ -392,11 +392,11 @@ Choice: \(Pr(\text{choice}(t) = d) = softmax(\theta(\text{explore}+\text{exploit
 </p>
 
 </section>
-<section id="slide-orgd272714-split">
+<section id="slide-orgd5ff314-split">
 
 </section>
-<section id="slide-org5592ea9">
-<h3 id="org5592ea9">VSE + noise</h3>
+<section id="slide-org0a03331">
+<h3 id="org0a03331">VSE + noise</h3>
 <p>
 Wyart, Fiedling et al. type of model:
 </p>
@@ -406,10 +406,10 @@ Exploitation: \(\text{exploit}(t+1,k) = \delta \text{exploit}(t) + \eta(t,k)v(t)
 </p>
 
 </section>
-<section id="slide-orga9ba1cd">
-<h3 id="orga9ba1cd">PVL-Delta</h3>
+<section id="slide-org7103054">
+<h3 id="org7103054">PVL-Delta</h3>
 <p>
-Utility:  \(v(\text{gain}, \text{loss}) = \text{gain}^\alpha - \lambda\text{loss}^\alpha\) (\(\alpha \in [0,1], \lambda\in[0,5]\))
+Utility:  \(v(\text{gain}, \text{loss}) = \text{gain}^\alpha - \lambda\text{loss}^\alpha\) (\(\alpha \in [0,1], \lambda\in[0,10]\))
 </p>
 
 <p>
@@ -417,22 +417,23 @@ Exploitation: \(\text{exploit}(t+1,k) == \text{exploit}(t,k) += A * (v(\text{gai
 </p>
 
 </section>
-<section id="slide-org086e082">
-<h3 id="org086e082">PVL-Delta + noise</h3>
+<section id="slide-orgb9c27f3">
+<h3 id="orgb9c27f3">PVL-Delta + noise</h3>
 <p>
-Exploitation: \(\text{exploit}(t+1,k) == \text{exploit}(t,k) + A  * (v(\text{gain}, \text{loss}) -  \text{exploit}(t,k)) + \eta(t,k)v(t)(1+\zeta\varepsilon(t))\), with \(\varepsilon \sim \mathcal N(0,|v(t)|^2)\) and \(\zeta\in [0,2]\). 
+Exploitation: \(\text{exploit}(t+1,k) = \text{exploit}(t,k) + A  * (v(\text{gain}, \text{loss}) -  \text{exploit}(t,k))\) 
+\(+ \eta(t,k)v(t)(1+\zeta\varepsilon(t))\), with \(\varepsilon \sim \mathcal N(0,|v(t)|^2)\) and \(\zeta\in [0,2]\). 
 </p>
 
 </section>
 </section>
 <section>
-<section id="slide-orgcf93830">
-<h2 id="orgcf93830">Results</h2>
-<div class="outline-text-2" id="text-orgcf93830">
+<section id="slide-org819858b">
+<h2 id="org819858b">Results</h2>
+<div class="outline-text-2" id="text-org819858b">
 </div>
 </section>
-<section id="slide-org6df0810">
-<h3 id="org6df0810">Data</h3>
+<section id="slide-org1813803">
+<h3 id="org1813803">Data</h3>
 <pre class="example">
 
 
@@ -455,12 +456,12 @@ Exploitation: \(\text{exploit}(t+1,k) == \text{exploit}(t,k) + A  * (v(\text{gai
 
 
 </section>
-<section id="slide-orgb397549">
-<h3 id="orgb397549">Model comparison</h3>
+<section id="slide-org65feeb7">
+<h3 id="org65feeb7">Model comparison</h3>
 
 </section>
-<section id="slide-orgb7d262c">
-<h3 id="orgb7d262c">Prediction accuracy by study</h3>
+<section id="slide-org4a5f702">
+<h3 id="org4a5f702">Prediction accuracy by study</h3>
 <pre class="example">
 
 
@@ -484,8 +485,8 @@ Exploitation: \(\text{exploit}(t+1,k) == \text{exploit}(t,k) + A  * (v(\text{gai
 
 
 </section>
-<section id="slide-org98b41d4">
-<h3 id="org98b41d4">Prediction accuracy (average)</h3>
+<section id="slide-org9660004">
+<h3 id="org9660004">Prediction accuracy (average)</h3>
 <pre class="example">
 
 
@@ -496,8 +497,8 @@ Exploitation: \(\text{exploit}(t+1,k) == \text{exploit}(t,k) + A  * (v(\text{gai
 </pre>
 
 </section>
-<section id="slide-orgeb7c630">
-<h3 id="orgeb7c630">AIC (By study)</h3>
+<section id="slide-org7e336a0">
+<h3 id="org7e336a0">AIC (By study)</h3>
 <pre class="example">
 
 
@@ -518,8 +519,8 @@ Exploitation: \(\text{exploit}(t+1,k) == \text{exploit}(t,k) + A  * (v(\text{gai
 </pre>
 
 </section>
-<section id="slide-org638e778">
-<h3 id="org638e778">AIC (By model)</h3>
+<section id="slide-org5e72745">
+<h3 id="org5e72745">AIC (By model)</h3>
 <pre class="example">
 
 
@@ -532,13 +533,13 @@ Exploitation: \(\text{exploit}(t+1,k) == \text{exploit}(t,k) + A  * (v(\text{gai
 </section>
 </section>
 <section>
-<section id="slide-org05e7b53">
-<h2 id="org05e7b53">Parameters</h2>
-<div class="outline-text-2" id="text-org05e7b53">
+<section id="slide-orga813255">
+<h2 id="orga813255">Parameters</h2>
+<div class="outline-text-2" id="text-orga813255">
 </div>
 </section>
-<section id="slide-org5f868a4">
-<h3 id="org5f868a4">Overview</h3>
+<section id="slide-org3537f12">
+<h3 id="org3537f12">Overview</h3>
 <pre class="example">
 
 
@@ -555,17 +556,17 @@ Exploitation: \(\text{exploit}(t+1,k) == \text{exploit}(t,k) + A  * (v(\text{gai
 </pre>
 
 </section>
-<section id="slide-orgd1ec969">
-<h3 id="orgd1ec969">Test parameters</h3>
+<section id="slide-org45db438">
+<h3 id="org45db438">Test parameters</h3>
 <pre class="example">
 
 
-|model     | alpha|  cons| gamma| delta|   phi|  zeta|     A| lambda|
-|:---------|-----:|-----:|-----:|-----:|-----:|-----:|-----:|------:|
-|vse       |  7.02| 38.09| -1.70| 14.48| -1.33|    NA|    NA|     NA|
-|vse_noise |  2.49| 35.78| -1.68| 14.60| -1.56| 46.87|    NA|     NA|
-|pvl       |  0.79| -0.88|    NA|    NA|    NA|    NA|  8.22|   0.97|
-|pvl_noise |  2.62| -0.19|    NA|    NA|    NA| -0.61| 11.31|  -0.80|
+|model     | alpha|         cons| gamma|   delta| phi|         zeta|     A| lambda|
+|:---------|-----:|------------:|-----:|-------:|---:|------------:|-----:|------:|
+|vse       |  1116| 3.477832e+16|     0| 1933941|   0|           NA|    NA|     NA|
+|vse_noise |    12| 3.461889e+15|     0| 2181150|   0| 2.273189e+20|    NA|     NA|
+|pvl       |     2| 0.000000e+00|    NA|      NA|  NA|           NA|  3719|      3|
+|pvl_noise |    14| 1.000000e+00|    NA|      NA|  NA| 1.000000e+00| 81548|      0|
 
 </pre>
 </section>

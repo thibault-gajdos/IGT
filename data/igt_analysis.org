@@ -291,21 +291,23 @@ $+ \eta(t,k)v(t)(1+\zeta\varepsilon(t))$, with $\varepsilon \sim \mathcal N(0,|v
     for (pp in p){
     mice <- d.comp %>% filter(species == 'mice', param == pp, model == m) 
     human <- d.comp %>% filter(species == 'human', param == pp, model == m)
-    bf = ttestBF(mice$mean, human$mean, paired=FALSE)@bayesFactor$bf
+    bf = ttestBF(mice$mean, human$mean, paired=FALSE)
+    bf.value <- extractBF(bf)$bf
     d.bf <- d.bf %>%
-      add_row(param = pp, model = m, bf = bf)  
+      add_row(param = pp, model = m, bf = round(bf.value))
     }
   }
-  d.bf <- d.bf %>%  pivot_wider(names_from = c(param), values_from = bf)
+
+  d.bf <- d.bf %>%  pivot_wider(names_from = param, values_from = bf)
   print(kable(d.bf, digit = 2))
 #+END_SRC 
 
 #+RESULTS:
 : 
 : 
-: |model     | alpha|  cons| gamma| delta|   phi|  zeta|     A| lambda|
-: |:---------|-----:|-----:|-----:|-----:|-----:|-----:|-----:|------:|
-: |vse       |  7.02| 38.09| -1.70| 14.48| -1.33|    NA|    NA|     NA|
-: |vse_noise |  2.49| 35.78| -1.68| 14.60| -1.56| 46.87|    NA|     NA|
-: |pvl       |  0.79| -0.88|    NA|    NA|    NA|    NA|  8.22|   0.97|
-: |pvl_noise |  2.62| -0.19|    NA|    NA|    NA| -0.61| 11.31|  -0.80|
+: |model     | alpha|         cons| gamma|   delta| phi|         zeta|     A| lambda|
+: |:---------|-----:|------------:|-----:|-------:|---:|------------:|-----:|------:|
+: |vse       |  1116| 3.477832e+16|     0| 1933941|   0|           NA|    NA|     NA|
+: |vse_noise |    12| 3.461889e+15|     0| 2181150|   0| 2.273189e+20|    NA|     NA|
+: |pvl       |     2| 0.000000e+00|    NA|      NA|  NA|           NA|  3719|      3|
+: |pvl_noise |    14| 1.000000e+00|    NA|      NA|  NA| 1.000000e+00| 81548|      0|
