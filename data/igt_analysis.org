@@ -1,0 +1,311 @@
+#+TITLE: IGT
+#+DATE: 
+#+AUTHOR: the author
+#+EMAIL: the email
+#+REVEAL_INIT_OPTIONS: width:1200, height:800, transition:'none'
+#+REVEAL_ROOT: file:///Users/thibault/thib/reveal.js
+#+OPTIONS: toc:1 reveal_single_file:t num:nil 
+#+REVEAL_EXTRA_CSS: /Users/thibault/thib/reveal.js/local.css
+#+REVEAL_THEME: simple 
+# #+REVEAL_HLEVEL: 999 #minimum number of slides in first level
+#+OPTIONS: author:nil date:nil email:nil
+#+OPTIONS: timestamp:nil
+#+OPTIONS: reveal_title_slide:auto 
+
+:Options_R:
+#+property: :session *R*
+#+property: header-args:R :exports results
+#+property: header-args:R :eval never-export
+#+property: header-args:R+ :tangle yes
+#+property: header-args:R+ :session
+#+property: header-args:R+ :results output 
+:end:
+
+# clean output
+#+begin_src emacs-lisp :exports none
+   ;(org-babel-map-src-blocks nil (org-babel-remove-result))
+#+end_src
+
+#+RESULTS:
+
+* Models
+
+
+** Ligneul's (2019) Value plus Sequential Exploration (VSE) model:
+
+Utility:  $v(\text{gain}, \text{loss}) = \text{gain}^\alpha - \text{loss}^\alpha$ ($\alpha \in [0,1]$)
+
+Exploitation: $\text{exploit}(t+1,k) = \delta \text{exploit}(t) + \eta(t,k)v(t)$ ($\delta\in [0,1]$, $\eta(t,k)=1$ if k is chosen at t, 0 otherwise)
+
+Exploration: $\text{explore}(t+1,k) = (1-\eta(k))(\text{explore}(t,k)+\gamma(\varphi-\text{explore}(t,k))$ ($\gamma \in [0,1]$, $\varphi \in \mathbb R$)
+
+Choice: $Pr(\text{choice}(t) = d) = softmax(\theta(\text{explore}+\text{exploit}))$ ($\theta = 3^\beta-1$).
+
+#+REVEAL: split
+
+** VSE + noise
+
+Wyart, Fiedling et al. type of model:
+
+Exploitation: $\text{exploit}(t+1,k) = \delta \text{exploit}(t) + \eta(t,k)v(t)(1+\zeta\varepsilon(t))$, with $\varepsilon \sim \mathcal N(0,|v(t)|^2)$ and $\zeta\in [0,2]$. 
+
+** PVL-Delta
+Utility:  $v(\text{gain}, \text{loss}) = \text{gain}^\alpha - \lambda\text{loss}^\alpha$ ($\alpha \in [0,1], \lambda\in[0,10]$)
+
+Exploitation: $\text{exploit}(t+1,k) == \text{exploit}(t,k) += A * (v(\text{gain}, \text{loss}) -  \text{exploit}(t,k))$
+
+** PVL-Delta + noise
+
+Exploitation: $\text{exploit}(t+1,k) = \text{exploit}(t,k) + A  * (v(\text{gain}, \text{loss}) -  \text{exploit}(t,k))$ 
+$+ \eta(t,k)v(t)(1+\zeta\varepsilon(t))$, with $\varepsilon \sim \mathcal N(0,|v(t)|^2)$ and $\zeta\in [0,2]$. 
+
+* Results
+
+** Data
+
+#+BEGIN_SRC R  :results none  :tangle yes  :session :exports none 
+  rm(list=ls(all=TRUE))## efface les données
+  source('~/thib/projects/tools/R_lib.r')
+  setwd('~/thib/projects/IGT/data/')
+  load('summary_indiv.rdata') ## summary.all
+  load( 'pred_indiv.rdata') ## pred.all
+  load('obs.rdata') ## obs.all
+#+END_SRC
+
+#+BEGIN_SRC R  :results output   :tangle yes  :session :exports results 
+  pred.all <- pred.all %>%
+      relocate(c(model, study, subjID), .before = 1)
+  ## create an outlier variable
+  ## = 1 if max(Rhat)>1.2 (fit did not converge), 0 otherwise
+  outlier <- summary.all %>%
+      group_by(model, study, subjID) %>%
+      mutate(Rmax = max(Rhat, na.rm = T)) %>%
+      mutate(outlier = ifelse(Rmax>1.2, 1,0)) %>%
+      filter(param == 'alpha') %>%
+      select(model, study, subjID, outlier) %>%
+      ungroup()
+  out  <- outlier %>%
+      group_by(model, study) %>%
+      summarise(outlier = sum(outlier, na.rm = TRUE)) %>%
+      pivot_wider(names_from = model, values_from = outlier)
+   print(kable(out))
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+
+
+|study             | pvl| pvl_noise| vse| vse_noise|
+|:-----------------|---:|---------:|---:|---------:|
+|Fridberg          |   0|         0|   0|         0|
+|Horstmann         |   3|        10|   0|         0|
+|human             |   5|        20|   1|         0|
+|Kjome             |   0|         0|   0|         0|
+|Maia              |   1|         2|   0|         0|
+|mice              |   0|         0|   0|         0|
+|Premkumar         |   0|         3|   0|         0|
+|Steingroever2011  |   4|        32|   0|         0|
+|SteingroverInPrep |   5|         7|   0|         0|
+|Wetzels           |   3|        17|   0|         0|
+|Wood              |   1|         4|   0|         0|
+|Worthy            |   0|         0|   0|         0|
+#+end_example
+
+
+
+** Model comparison
+
+** Prediction accuracy by study
+
+#+BEGIN_SRC R  :results otuput  :tangle yes  :session :exports results 
+  load('accuracy.rdata')
+  a <- accuracy %>%
+      rowwise() %>%
+      mutate(acc = mean(c_across(starts_with("V")), na.rm = TRUE), .keep = "unused") %>%
+      ungroup()
+  accuracy <- merge(a, outlier)
+
+  accuracy.summary <- accuracy %>%
+      filter(outlier == 0) %>%
+      group_by(model,study) %>%
+      summarise(acc = mean(acc, na.rm = TRUE)*100)
+  a.summary <- accuracy.summary %>%
+    pivot_wider(names_from = model, values_from = acc) 
+  print(kable(a.summary, digits = 2))
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+
+
+|study             |   pvl| pvl_noise|   vse| vse_noise|
+|:-----------------|-----:|---------:|-----:|---------:|
+|Fridberg          | 48.35|     47.58| 51.93|     51.93|
+|Horstmann         | 48.40|     47.76| 59.45|     59.21|
+|human             | 45.94|     37.84| 57.13|     56.61|
+|Kjome             | 46.00|     46.16| 53.58|     53.79|
+|Maia              | 51.64|     51.45| 64.03|     63.60|
+|mice              | 47.04|     47.89| 47.41|     47.01|
+|Premkumar         | 51.80|     49.09| 57.44|     57.36|
+|Steingroever2011  | 56.94|     52.13| 66.81|     66.95|
+|SteingroverInPrep | 51.38|     52.24| 63.64|     63.99|
+|Wetzels           | 48.18|     45.22| 60.11|     60.20|
+|Wood              | 43.41|     43.69| 53.50|     53.38|
+|Worthy            | 41.03|     41.97| 58.46|     58.34|
+#+end_example
+
+
+
+
+** Prediction accuracy (average)
+
+#+BEGIN_SRC R  :results output  :tangle yes  :session :exports results 
+  accuracy.summary <- accuracy %>%
+      filter(outlier == 0) %>%
+      group_by(model) %>%
+      summarise(acc = mean(acc, na.rm = TRUE)*100)
+  a.summary <- accuracy.summary %>%
+    pivot_wider(names_from = model, values_from = acc) 
+  print(kable(a.summary, digits = 2))
+#+END_SRC
+
+#+RESULTS:
+: 
+: 
+: |   pvl| pvl_noise|  vse| vse_noise|
+: |-----:|---------:|----:|---------:|
+: | 47.87|     46.87| 58.2|     58.09|
+
+** AIC (By study)
+
+
+#+BEGIN_SRC R  :results output  :tangle yes  :session :exports results 
+  d <- summary.all %>%
+    mutate(k = case_when(
+	     model == 'vse' ~ 5,
+	     model == 'vse_noise' ~6,
+	     model == 'pvl' ~ 4,
+	     model == 'pvl_noise' ~ 5
+	   )) %>%
+      group_by(study, model, subjID) %>%
+      mutate(Rmax = max(Rhat, na.rm = T)) %>%
+      mutate(outlier = ifelse(Rmax>1.2, 1,0)) %>%
+      filter(outlier == 0) %>%
+      mutate(AIC = -2*l + 2*k) %>%
+      ungroup()
+
+  aic.summary <- d %>%
+    group_by(model, study) %>%
+    summarise(AIC = mean(AIC)) %>%
+    pivot_wider(names_from = model, values_from = AIC) 
+  print(kable(aic.summary, digits = 1))
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+
+
+|study             |   pvl| pvl_noise|   vse| vse_noise|
+|:-----------------|-----:|---------:|-----:|---------:|
+|Fridberg          | 229.6|     232.8| 228.0|     230.1|
+|Horstmann         | 229.5|     233.9| 207.9|     210.2|
+|human             | 460.5|     513.8| 412.5|     414.1|
+|Kjome             | 241.8|     244.7| 226.3|     229.1|
+|Maia              | 224.6|     228.0| 193.9|     196.4|
+|mice              | 245.4|     245.7| 246.3|     247.7|
+|Premkumar         | 233.4|     241.3| 216.0|     218.2|
+|Steingroever2011  | 297.3|     321.9| 255.3|     257.3|
+|SteingroverInPrep | 219.0|     223.2| 190.4|     192.4|
+|Wetzels           | 344.8|     362.6| 303.1|     305.1|
+|Wood              | 249.0|     251.6| 226.0|     228.3|
+|Worthy            | 248.9|     249.8| 208.5|     210.4|
+#+end_example
+
+** AIC (By model)
+
+
+#+BEGIN_SRC R  :results output  :tangle yes  :session :exports results 
+  aic.summary <- d %>%
+    group_by(model) %>%
+    filter(outlier == 0) %>%
+    summarise(AIC = mean(AIC)) %>%
+    pivot_wider(names_from = model, values_from = AIC) 
+  print(kable(aic.summary, digits = 1))
+
+#+END_SRC
+
+#+RESULTS:
+: 
+: 
+: |   pvl| pvl_noise|   vse| vse_noise|
+: |-----:|---------:|-----:|---------:|
+: | 258.8|     257.2| 233.7|     236.1|
+
+* Parameters
+
+** Overview
+#+BEGIN_SRC R  :results output  :tangle yes  :session :exports results 
+  d.param <- d %>%
+    mutate(species = ifelse(study == 'mice', 'mice', 'human')) %>%
+    filter(outlier == 0) %>%
+    select(model, param, mean, study, species) %>%
+    group_by(param, model, species) %>%
+    summarise(mean = mean(mean, na.rm = TRUE)) %>%
+    pivot_wider(names_from = param, values_from = mean) 
+  print(kable(d.param, digit = 2))
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+
+
+|model     |species |    A| alpha| cons| delta| gamma| lambda|   phi| zeta|
+|:---------|:-------|----:|-----:|----:|-----:|-----:|------:|-----:|----:|
+|pvl       |human   | 0.38|  0.38| 1.13|    NA|    NA|   2.72|    NA|   NA|
+|pvl       |mice    | 0.16|  0.48| 0.92|    NA|    NA|   2.02|    NA|   NA|
+|pvl_noise |human   | 0.45|  0.35| 0.87|    NA|    NA|   2.82|    NA| 0.17|
+|pvl_noise |mice    | 0.21|  0.47| 0.63|    NA|    NA|   2.42|    NA| 0.22|
+|vse       |human   |   NA|  0.34| 0.74|  0.52|  0.48|     NA| -0.03|   NA|
+|vse       |mice    |   NA|  0.48| 0.14|  0.77|  0.49|     NA| -0.24|   NA|
+|vse_noise |human   |   NA|  0.36| 0.69|  0.53|  0.48|     NA| -0.11| 0.27|
+|vse_noise |mice    |   NA|  0.46| 0.13|  0.78|  0.49|     NA| -0.25| 0.63|
+#+end_example
+
+** Test parameters
+
+#+BEGIN_SRC R  :results output  :tangle yes  :session :exports results 
+  d.comp <- d %>%
+    mutate(species = ifelse(study == 'mice', 'mice', 'human')) %>%
+    filter(outlier == 0)
+  d.bf <- data.frame(model = character(), param = character(), bf = numeric())
+  for (m in c('vse','vse_noise','pvl','pvl_noise')){
+    if (m == 'vse'){
+      p <-  c('alpha', 'cons', 'gamma', 'delta', 'phi')
+    }else if (m == 'vse_noise'){
+      p <- c('alpha', 'cons', 'gamma', 'delta', 'phi', 'zeta')
+    }else if (m == 'pvl'){
+      p <- c('alpha', 'A', 'lambda', 'cons')
+    }else if (m == 'pvl_noise'){
+      p <-  c('alpha', 'A', 'lambda', 'cons', 'zeta')
+    }
+    for (pp in p){
+    mice <- d.comp %>% filter(species == 'mice', param == pp, model == m) 
+    human <- d.comp %>% filter(species == 'human', param == pp, model == m)
+    bf = ttestBF(mice$mean, human$mean, paired=FALSE)@bayesFactor$bf
+    d.bf <- d.bf %>%
+      add_row(param = pp, model = m, bf = bf)  
+    }
+  }
+  d.bf <- d.bf %>%  pivot_wider(names_from = c(param), values_from = bf)
+  print(kable(d.bf, digit = 2))
+#+END_SRC 
+
+#+RESULTS:
+: 
+: 
+: |model     | alpha|  cons| gamma| delta|   phi|  zeta|     A| lambda|
+: |:---------|-----:|-----:|-----:|-----:|-----:|-----:|-----:|------:|
+: |vse       |  7.02| 38.09| -1.70| 14.48| -1.33|    NA|    NA|     NA|
+: |vse_noise |  2.49| 35.78| -1.68| 14.60| -1.56| 46.87|    NA|     NA|
+: |pvl       |  0.79| -0.88|    NA|    NA|    NA|    NA|  8.22|   0.97|
+: |pvl_noise |  2.62| -0.19|    NA|    NA|    NA| -0.61| 11.31|  -0.80|
