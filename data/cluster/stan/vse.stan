@@ -46,13 +46,13 @@ parameters {
 
 transformed parameters {
   // Transform subject-level raw parameters
-  real<lower=0, upper=1> alpha;
+  real<lower=0, upper=2> alpha;
   real<lower=0, upper=5> cons;
   real<lower=0, upper=1> gamma;
   real<lower=0, upper=1> delta;
 
 
-  alpha  = Phi_approx(alpha_pr);
+  alpha  = Phi_approx(alpha_pr) * 2;
   cons   = Phi_approx(cons_pr) * 5;
   gamma  = Phi_approx(gamma_pr);
   delta  = Phi_approx(delta_pr);
@@ -83,7 +83,7 @@ model {
       // softmax choice
       choice[t] ~ categorical_logit(theta * (exploit+explore));
 
-      // current utility
+      // curent utility
       curUtil = pow(gain[t], alpha) - pow(loss[t], alpha);
     
       // update exploit

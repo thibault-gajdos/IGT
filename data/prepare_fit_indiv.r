@@ -10,21 +10,22 @@ rm(list=ls(all=TRUE))  ## efface les données
 source('~/thib/projects/tools/R_lib.r')
 setwd('~/thib/projects/IGT/data/')
 
-load('./cluster/data_all/data_all.rdata')
-names <- c(unique(data.all$study),'mice', 'human')
-
+load('./cluster/data_igt.rdata')
+models <- c('pvl_delta_lambda', 'pvl_delta_lambda_noise', 'vse', 'vse_noise')
+range.d <- c(1:12)
+names <- data.frame(study = unique(data.igt$study), d = unique(data.igt$d))
 
 ## predictions and fitted parameters
-params.pvl = c('A', 'alpha', 'cons', 'lambda')
-params.pvl.noise = c('A', 'alpha', 'cons', 'lambda', 'zeta')
+params.pvl = c('A', 'alpha', 'cons', 'persev')
+params.pvl.noise = c('A', 'alpha', 'cons', 'zeta','persev')
 params.vse = c('alpha', 'cons', 'gamma', 'delta', 'phi')
 params.vse.noise = c('alpha', 'cons', 'gamma', 'delta', 'phi','zeta')
 mat = matrix(ncol = 0, nrow = 0)
 summary.all = data.frame(mat)
 pred.all = data.frame(mat)
 
-
-for (m in c('vse','vse_noise','pvl_delta_lambda', 'pvl_delta_lambda_noise')){
+##for (m in c('vse','vse_noise','pvl_delta_lambda', 'pvl_delta_lambda_noise')){
+for (m in models){
     if (m == 'vse'){
             params = params.vse
         }else if (m == 'vse_noise'){
@@ -34,14 +35,10 @@ for (m in c('vse','vse_noise','pvl_delta_lambda', 'pvl_delta_lambda_noise')){
         }else{
             params = params.pvl.noise
         }
-    for (name in names){
-        if (name %in% c('human','mice')){
-            nsubjs <- 40
-        }else{
-            nsubjs <- length(unique(data.all[data.all$study == name,]$subjID))
-        }
+    for (s in range.d){
+        nsubjs <- length(unique(data.igt[data.igt$d == s,]$subjID))
         for (i in c(1:nsubjs)){
-            data.name <- paste('./cluster/output/',m,'_',name,'_',i,'.rdata', sep='')
+            data.name <- paste('./cluster/output/',m,'_',s,'_',i,'.rdata', sep='')
             load(data.name)
             print(data.name)
 
@@ -49,20 +46,23 @@ for (m in c('vse','vse_noise','pvl_delta_lambda', 'pvl_delta_lambda_noise')){
             pred <- extract(fit)$y_pred %>%
                                as.data.frame() %>%
                                summarise_all(mlv, method = 'mfv') %>%
-                               mutate(study = name, model = m, subjID = i)
+                               mutate(d = s, study = names[names$d == s,]$study, model = m, subjID = i)
             pred.all <-  bind_rows(pred.all, pred[1,])
 
             ## log_lik and parameters
             log_lik = loo::extract_log_lik(fit, parameter_name = "log_lik", merge_chains = TRUE)
             l <- loo::elpd(log_lik)$estimates[[1]]
-            s <- as.data.frame(summary(fit, pars = params)$summary) %>%
+            sampler_params <- get_sampler_params(fit, inc_warmup = FALSE)
+            div = sum(sapply(sampler_params, function(x) sum(x[, "divergent__"])))
+            su <- as.data.frame(summary(fit, pars = params)$summary) %>%
                 rownames_to_column() %>%
                 rename(param = rowname) %>%
-                mutate(l = l, study = name, model = m, subjID = i)
-            summary.all <-  bind_rows(summary.all, s)
+                mutate(l = l, d =s, study = names[names$d == s,]$study, model = m, subjID = i, divergent = div)
+            summary.all <-  bind_rows(summary.all, su)
         }
     }
 }
+
 summary.all <- summary.all %>%
     mutate(model = case_when(model == 'pvl_delta_lambda' ~ 'pvl',
                              model == 'pvl_delta_lambda_noise' ~ 'pvl_noise',
@@ -82,29 +82,17 @@ save(pred.all, file = 'pred_indiv.rdata')
 mat = matrix(ncol = 0, nrow = 0)
 obs.all = data.frame(mat)
 
-for (name in names){
-    ## load data
-    if (name == 'human') {
-        load('./cluster/data_human/data_human.rdata')
-        data <- data.human
-    }else if (name == 'mice'){
-        load('./cluster/data_mice/data_mice.rdata')
-        data <- data.mice
-    }else{
-        load('./cluster/data_all/data_all.rdata')
-        data <- data.all %>% filter(study == name)
-    }
-    if (name %in% c('human','mice')){
-        nsubjs <- 40
-    }else{
-        nsubjs <- length(unique(data.all[data.all$study == name,]$subjID))
-    }
+load('./cluster/data_igt.rdata')
+for (s in range.d){
+    data <- data.igt %>% filter(d == s)
+    nsubjs <- length(unique(data.igt[data.igt$d == s,]$subjID))
+
     for (i in c(1:nsubjs)){
         obs <- data %>%
             filter(subjID == i)
         obs_vector  <- t(as.vector(obs$choice))
         obs <- as.data.frame(obs_vector) %>%
-            mutate(study = name, subjID = i)
+            mutate(study =  names[names$d == s,]$study, subjID = i)
         if (nrow(obs.all) == 0){
             obs.all <- obs
         }else{
@@ -117,21 +105,8 @@ save(obs.all, file = 'obs.rdata')
 
 ## * Accuracy
 pred.all <- pred.all %>%
-    relocate(c(model, study, subjID), .before = 1)
-## create an outlier variable
-## = 1 if max(Rhat)>1.2 (fit did not converge), 0 otherwise
-outlier <- summary.all %>%
-    group_by(model, study, subjID) %>%
-    mutate(Rmax = max(Rhat, na.rm = T)) %>%
-    mutate(outlier = ifelse(Rmax>1.2, 1,0)) %>%
-    filter(param == 'alpha') %>%
-    select(model, study, subjID, outlier) %>%
-    ungroup()
-out  <- outlier %>%
-    group_by(model, study) %>%
-    summarise(outlier = sum(outlier, na.rm = TRUE)) %>%
-    pivot_wider(names_from = model, values_from = outlier)
-
+    select(-d) %>%
+    relocate(c(model, study,  subjID), .before = 1)
 
 
 ## compute prediction accuracy (1 = correct, 0 = incorrect)

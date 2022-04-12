@@ -19,7 +19,7 @@ data {
 }
 transformed data {
   vector[4] initV;
-  initV  = rep_vector(0.0, 4); //initialize expected value to 0
+  initV  = rep_vector(1.0, 4); //initialize expected value 
   //real noise[T];
 
   //generate noise 
@@ -29,29 +29,31 @@ transformed data {
 }
 
 parameters {
+  real persev;
   //Rraw parameters (for Matt trick)
   real A_pr;
   real alpha_pr;
   real cons_pr;
-  real lambda_pr;
+  //real lambda_pr;
 }
 
 transformed parameters {
   // Transform subject-level raw parameters
   real<lower=0, upper=1>  A;
-  real<lower=0, upper=1>  alpha;
+  real<lower=0, upper=2>  alpha;
   real<lower=0, upper=5>  cons;
-  real<lower=0, upper=10>  lambda;
+  //real<lower=0, upper=10>  lambda;
 
   A      = Phi_approx(A_pr);
-  alpha  = Phi_approx(alpha_pr);
+  alpha  = Phi_approx(alpha_pr) * 2;
   cons   = Phi_approx(cons_pr) * 5;
-  lambda   = Phi_approx(lambda_pr) * 10;
+  //lambda   = Phi_approx(lambda_pr) * 10;
 }
 
 model {
   // Define values
-  vector[4] ev;
+  vector[4] ev;    // current expected value
+  vector[4] p;      // current confirmation bias
   real curUtil;     // utility of curFb
   real theta;       // theta = 3^c - 1
   //real epsilon;  //abs value pred error
@@ -59,20 +61,23 @@ model {
   // Initialize values
   theta = pow(3, cons) -1;
   ev = initV; // initial ev values
+  p = rep_vector(0, 4);
   
 // individual parameters
   A_pr      ~ normal(0, 1);
   alpha_pr  ~ normal(0, 1);
   cons_pr   ~ normal(0, 1);
-  lambda_pr   ~ normal(0, 1);
+  persev   ~ normal(0, 1);
+ 
+  //lambda_pr   ~ normal(0, 1);
   //zeta_pr   ~ normal(0, 1);
 
   
   for (t in 1:T) {
     // softmax choice
-    choice[t] ~ categorical_logit(theta * ev);
+    choice[t] ~ categorical_logit(theta * ev + persev * p);
 
-    curUtil = pow(gain[t], alpha) - lambda * pow(loss[t], alpha);
+    curUtil = pow(gain[t], alpha) -  pow(loss[t], alpha);
 
     //compute abs value pred error
     /* if (curUtil - ev[choice[t]] >= 0){ */
@@ -82,7 +87,14 @@ model {
     /* } */
     
     // update EV
-    ev[choice[t]] += A * (curUtil - ev[choice[t]]); //learning
+    for (k in 1:4){
+      if (k == choice[t]){
+	ev[k] += A * (curUtil - ev[k]);
+	p[k] = 1;
+      }else{    
+	p[k] =  0; 
+      }
+    }
   }
 }
 
@@ -97,11 +109,11 @@ generated quantities {
   for (t in 1:T) {
     y_pred[t] = -1;
   }
-
-
+  
   { // local section, this saves time and space
     // Define values
       vector[4] ev;
+      vector[4] p;
       real curUtil;     // utility of curFb
       real theta;       // theta = 3^c - 1
 
@@ -109,22 +121,31 @@ generated quantities {
       log_lik = 0;
       theta      = pow(3, cons) -1;
       ev         = initV; // initial ev values
+      p = rep_vector(0, 4);
 
       for (t in 1:T) {
         // softmax choice
-        log_lik += categorical_logit_lpmf(choice[t] | theta * ev);
+        log_lik += categorical_logit_lpmf(choice[t] | theta * ev + persev * p);
 
         // generate posterior prediction for current trial
-        y_pred[t] = categorical_rng(softmax(theta * ev));
+        y_pred[t] = categorical_rng(softmax(theta * ev + persev * p));
 
-         curUtil = pow(gain[t], alpha) - lambda * pow(loss[t], alpha);
+         curUtil = pow(gain[t], alpha) -  pow(loss[t], alpha);
 
         //absolute value pred error
 
 	// choice
-	ev[choice[t]] += A * (curUtil - ev[choice[t]]); //learning
+	 for (k in 1:4){
+	   if (k == choice[t]){
+	     ev[k] += A * (curUtil - ev[k]);
+	     p[k] = 1;
+	   }else{    
+	     p[k] =  0; 
+	   }
+	 }
       }
   }
 }
-
-
+      
+      
+      

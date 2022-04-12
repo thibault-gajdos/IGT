@@ -28,7 +28,7 @@ transformed data {
   //generate noise 
   for (t in 1:T){
     //noise[i,t] =  normal_bounded_rng(-1,1);
-    noise[t] =  normal_rng(0,.1);
+    noise[t] =  normal_rng(0,1);
   }
 }
 
@@ -48,14 +48,14 @@ parameters {
 
 transformed parameters {
   // Transform subject-level raw parameters
-  real<lower=0, upper=1> alpha;
+  real<lower=0, upper=2> alpha;
   real<lower=0, upper=5> cons;
   real<lower=0, upper=1> gamma;
   real<lower=0, upper=1> delta;
   real<lower=0, upper=2> zeta;
 
 
-  alpha  = Phi_approx(alpha_pr);
+  alpha  = Phi_approx(alpha_pr)*2;
   cons   = Phi_approx(cons_pr) * 5;
   gamma  = Phi_approx(gamma_pr);
   delta  = Phi_approx(delta_pr);
@@ -147,7 +147,7 @@ generated quantities {
       
       // update exploit
       exploit *= delta;
-      exploit[choice[t]] += curUtil + abs(curUtil) * noise[t] * zeta;
+      exploit[choice[t]] += curUtil + fabs(curUtil) * noise[t] * zeta;
 	  
       // update explore
       for (k in 1:4) {
